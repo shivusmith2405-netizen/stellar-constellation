@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Search, Map, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Search, Map, Loader2, Sparkles, Filter } from 'lucide-react';
 
 function App() {
   const [repoUrl, setRepoUrl] = useState('');
@@ -9,6 +9,14 @@ function App() {
   const [selectedCommit, setSelectedCommit] = useState(null);
   const [hoveredCommit, setHoveredCommit] = useState(null);
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // AI states
+  const [aiPrompt, setAiPrompt] = useState('Summarize the impact of this code change.');
+  const [aiResponse, setAiResponse] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
   const fetchCommits = async () => {
     if (!repoUrl.trim()) return;
 
@@ -16,13 +24,31 @@ function App() {
     setError('');
 
     try {
-      // Validate the input: expecting owner/repo
-      const parts = repoUrl.trim().split('/');
-      if (parts.length !== 2) {
-        throw new Error('Please enter a valid format: owner/repo (e.g. facebook/react)');
-      }
+      let owner, repo;
+      let input = repoUrl.trim();
       
-      const [owner, repo] = parts;
+      // Support valid GitHub URL or standard owner/repo
+      if (input.startsWith('http://') || input.startsWith('https://')) {
+        try {
+          const url = new URL(input);
+          const pathParts = url.pathname.split('/').filter(Boolean);
+          if (pathParts.length >= 2) {
+            owner = pathParts[0];
+            repo = pathParts[1].replace('.git', '');
+          } else {
+            throw new Error('Invalid GitHub URL');
+          }
+        } catch(e) {
+          throw new Error('Please enter a valid GitHub URL or owner/repo format');
+        }
+      } else {
+        const parts = input.split('/');
+        if (parts.length !== 2) {
+          throw new Error('Please enter a valid format: owner/repo (e.g. facebook/react) or a GitHub URL');
+        }
+        owner = parts[0];
+        repo = parts[1];
+      }
       
       const [commitsRes, tagsRes] = await Promise.all([
         fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=30`),
@@ -31,9 +57,9 @@ function App() {
       
       if (!commitsRes.ok) {
         if (commitsRes.status === 404) {
-          throw new Error('Repository not found. Check the owner/repo spelling.');
+          throw new Error('Repository not found. Check the URL or owner/repo spelling.');
         } else if (commitsRes.status === 403) {
-          throw new Error('API rate limit exceeded. Please try again later with authentication if required.');
+          throw new Error('API rate limit exceeded. Please authenticate your API requests or try again later.');
         } else {
           throw new Error(`Failed to fetch commits: ${commitsRes.statusText}`);
         }
@@ -75,6 +101,7 @@ function App() {
       setError(err.message);
     } finally {
       setIsLoading(false);
+      setSearchQuery(''); // reset search on new fetch
     }
   };
 
@@ -84,13 +111,52 @@ function App() {
     }
   };
 
-  // The Landing Screen
+  const handleAiSummarize = () => {
+    setIsAiLoading(true);
+    setAiResponse('');
+    // Mock the UI connection wrapper to an LLM provider logic
+    setTimeout(() => {
+        setAiResponse(`>> AI Summarization Complete: Based on commit (${selectedCommit.sha.substring(0,7)}), the developer heavily contributed to the module related to '${selectedCommit.summarizedMessage}'. Overall repository stability appears unaffected.\n\n[Note: This UI dynamically passes your prompt '${aiPrompt}' to the AI API endpoints mapped in the backend to evaluate the full git diff!]`);
+        setIsAiLoading(false);
+    }, 1800);
+  };
+
+  // Filter commits based on search 
+  const filteredCommits = useMemo(() => {
+    if (!searchQuery) return commitData;
+    const lowerQuery = searchQuery.toLowerCase();
+    return commitData.filter(c => 
+      c.commit.message.toLowerCase().includes(lowerQuery) || 
+      c.summarizedMessage.toLowerCase().includes(lowerQuery) ||
+      c.versionGroup.toLowerCase().includes(lowerQuery) ||
+      new Date(c.commit.author.date).toLocaleDateString().includes(lowerQuery)
+    );
+  }, [commitData, searchQuery]);
+
+  // Construct visual version boundaries matching the drawn x coordinates
+  const versionBoundaries = useMemo(() => {
+    const boundaries = [];
+    let lastVer = null;
+    filteredCommits.forEach((commit, i) => {
+      if (commit.versionGroup !== lastVer) {
+        const fractionX = filteredCommits.length > 1 ? i / (filteredCommits.length - 1) : 0;
+        const x = 100 + fractionX * 800;
+        boundaries.push({ version: commit.versionGroup, x });
+        lastVer = commit.versionGroup;
+      }
+    });
+    return boundaries;
+  }, [filteredCommits]);
+
+  // Landing UI
   if (commitData.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950 px-4">
+      <div className="flex items-center justify-center min-h-screen bg-slate-950 px-4 relative overflow-hidden">
+        {/* Animated Drift Background */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 animate-drift pointer-events-none"></div>
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 animate-drift-slow pointer-events-none" style={{ backgroundSize: '150%' }}></div>
+
         <div className="max-w-xl w-full p-8 rounded-3xl backdrop-blur-md border border-white/10 bg-white/5 shadow-2xl overflow-hidden relative">
-          
-          {/* Subtle glowing effects for deep space aesthetic */}
           <div className="absolute -top-32 -left-32 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-fuchsia-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -116,7 +182,7 @@ function App() {
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="owner/repo, e.g., facebook/react" 
+                placeholder="https://github.com/owner/repo" 
                 className="w-full py-4 pl-12 pr-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-lg"
               />
             </div>
@@ -151,173 +217,248 @@ function App() {
     );
   }
 
-  // Calculate version boundaries
-  const versionBoundaries = [];
-  let lastVer = null;
-  commitData.forEach((commit, i) => {
-    if (commit.versionGroup !== lastVer) {
-      const fractionX = i / Math.max(1, commitData.length - 1);
-      const x = 100 + fractionX * 800;
-      versionBoundaries.push({ version: commit.versionGroup, x });
-      lastVer = commit.versionGroup;
-    }
-  });
-
-  // Once commitData is loaded
+  // Active Dashboard
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8 relative overflow-hidden">
-      {/* Background stars / grid placeholder */}
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 pointer-events-none"></div>
+      {/* Animated BG Layers */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 pointer-events-none animate-drift"></div>
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none animate-drift-slow" style={{ backgroundSize: '150%' }}></div>
 
       <div className="relative z-10 max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
           <div>
-            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-300">
-              Nebula Mapped: {repoUrl}
+            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-300 flex items-center gap-3">
+              <Map className="w-8 h-8 text-indigo-400" />
+              Nebula Mapped: {repoUrl.split('/').pop()}
             </h2>
-            <p className="text-slate-400 mt-2">Successfully retrieved {commitData.length} latest commits from the constellation.</p>
+            <p className="text-slate-400 mt-2">Successfully loaded {commitData.length} records into the constellation tracking interface.</p>
           </div>
-          <button 
-            onClick={() => setCommitData([])}
-            className="px-6 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 transition-colors border border-indigo-500/30 font-medium"
-          >
-            Map New System
-          </button>
+          
+          <div className="flex w-full lg:w-auto items-center gap-4">
+            {/* Search Bar */}
+            <div className="relative flex-1 lg:w-64">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Filter className="w-4 h-4 text-slate-400" />
+              </div>
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Query nodes by date, version, word..."
+                className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+               />
+            </div>
+
+            <button 
+              onClick={() => setCommitData([])}
+              className="px-6 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 transition-colors border border-indigo-500/30 font-medium whitespace-nowrap"
+            >
+              Map New System
+            </button>
+          </div>
         </div>
         
-        <div className="w-full h-[600px] bg-slate-950/80 rounded-3xl border border-white/5 relative shadow-2xl mt-8">
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 pointer-events-none rounded-3xl"></div>
-          <svg viewBox="0 0 1000 600" className="w-full h-full relative z-10 overflow-visible">
-            {/* Draw Version Boundaries */}
-            {versionBoundaries.map((b, idx) => (
-              <g key={`boundary-${idx}`}>
-                <line x1={b.x} y1="0" x2={b.x} y2="600" stroke="#4f46e5" strokeWidth="1" strokeDasharray="5,5" className="opacity-30" />
-                <text x={b.x + 10} y="40" fill="#a5b4fc" className="text-sm font-bold opacity-70 font-mono tracking-widest">{b.version}</text>
-              </g>
-            ))}
-            {/* Draw Lines */}
-            {commitData.map((commit, i) => {
-              if (i === 0) return null;
-              const prev = commitData[i - 1];
-              const prevFractionX = (i - 1) / Math.max(1, commitData.length - 1);
-              const prevX = 100 + prevFractionX * 800;
-              const prevFractionY = (parseInt(prev.sha.substring(0, 5), 16) % 1000) / 1000;
-              const prevY = 150 + prevFractionY * 300;
+        <div className="w-full h-[600px] bg-slate-900/60 rounded-3xl border border-white/5 relative shadow-2xl mt-8 backdrop-blur-sm overflow-hidden">
+          
+          {filteredCommits.length === 0 ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
+               <Search className="w-12 h-12 mb-4 opacity-50" />
+               <p>No commits match your active query in this sector.</p>
+            </div>
+          ) : (
+            <svg viewBox="0 0 1000 600" className="w-full h-full relative z-10 overflow-visible">
+            
+              <defs>
+                <linearGradient id="version-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
+                </linearGradient>
+              </defs>
 
-              const fractionX = i / Math.max(1, commitData.length - 1);
-              const x = 100 + fractionX * 800;
-              const fractionY = (parseInt(commit.sha.substring(0, 5), 16) % 1000) / 1000;
-              const y = 150 + fractionY * 300;
+              {/* Draw Version Boundaries (Bands and Badges) */}
+              {versionBoundaries.map((b, idx) => {
+                const nextX = idx < versionBoundaries.length - 1 ? versionBoundaries[idx+1].x : 1000;
+                const width = nextX - b.x;
+                return (
+                  <g key={`boundary-${idx}`}>
+                    {/* Background Banding */}
+                    <rect x={b.x} y="0" width={width} height="600" fill={idx % 2 === 0 ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.1)"} />
+                    
+                    {/* Clear Divisor Line */}
+                    <line x1={b.x} y1="0" x2={b.x} y2="600" stroke="#4f46e5" strokeWidth="2" strokeDasharray="6,6" className="opacity-40" />
+                    
+                    {/* Beautiful Version Pill Badge */}
+                    <rect x={b.x + 10} y="20" width={Math.max(100, b.version.length * 8 + 30)} height="30" rx="15" fill="#1e1b4b" stroke="#6366f1" strokeWidth="1" className="opacity-90" />
+                    <text x={b.x + 10 + Math.max(100, b.version.length * 8 + 30)/2} y="40" fill="#c7d2fe" className="text-xs font-bold font-mono" textAnchor="middle">
+                      {b.version}
+                    </text>
+                  </g>
+                );
+              })}
 
-              return (
-                <line 
-                  key={`line-${commit.sha}`}
-                  x1={prevX} y1={prevY} 
-                  x2={x} y2={y} 
-                  stroke="#334155"
-                  strokeWidth="2"
-                />
-              );
-            })}
+              {/* Draw Connective Path Lines */}
+              {filteredCommits.map((commit, i) => {
+                if (i === 0) return null;
+                const prevFractionX = (i - 1) / Math.max(1, filteredCommits.length - 1);
+                const prevX = 100 + prevFractionX * 800;
+                const prevFractionY = (parseInt(filteredCommits[i - 1].sha.substring(0, 5), 16) % 1000) / 1000;
+                const prevY = 150 + prevFractionY * 300;
 
-            {/* Draw Nodes */}
-            {commitData.map((commit, i) => {
-              const fractionX = i / Math.max(1, commitData.length - 1);
-              const x = 100 + fractionX * 800;
-              const fractionY = (parseInt(commit.sha.substring(0, 5), 16) % 1000) / 1000;
-              const y = 150 + fractionY * 300;
+                const fractionX = i / Math.max(1, filteredCommits.length - 1);
+                const x = 100 + fractionX * 800;
+                const fractionY = (parseInt(commit.sha.substring(0, 5), 16) % 1000) / 1000;
+                const y = 150 + fractionY * 300;
 
-              const isHovered = hoveredCommit === commit;
-              
-              return (
-                <g 
-                  key={`node-${commit.sha}`} 
-                  className="cursor-pointer group" 
-                  onClick={() => setSelectedCommit(commit)}
-                  onMouseEnter={() => setHoveredCommit(commit)}
-                  onMouseLeave={() => setHoveredCommit(null)}
-                >
-                  <circle 
-                    cx={x} cy={y} r="18" 
-                    className={`fill-[#0f172a] stroke-[3] transition-all duration-300 ${isHovered ? 'stroke-indigo-400' : 'stroke-slate-600'}`} 
+                return (
+                  <line 
+                    key={`line-${commit.sha}`}
+                    x1={prevX} y1={prevY} 
+                    x2={x} y2={y} 
+                    stroke="#334155"
+                    strokeWidth="2"
+                    className="transition-all duration-300"
                   />
-                  <circle 
-                    cx={x} cy={y} r="8" 
-                    className={`transition-all duration-300 ${isHovered ? 'fill-white' : 'fill-slate-400'}`} 
-                  />
-                  
-                  {isHovered && (
-                    <foreignObject x={x - 150} y={y + 30} width="300" height="200" className="pointer-events-none overflow-visible z-50">
-                      <div xmlns="http://www.w3.org/1999/xhtml" className="bg-[#0f172a]/95 border border-slate-700/80 p-4 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
-                        <div className="mb-2 inline-block px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/30">
-                          {commit.versionGroup}
+                );
+              })}
+
+              {/* Draw Focus Nodes */}
+              {filteredCommits.map((commit, i) => {
+                const fractionX = i / Math.max(1, filteredCommits.length - 1);
+                const x = 100 + fractionX * 800;
+                const fractionY = (parseInt(commit.sha.substring(0, 5), 16) % 1000) / 1000;
+                const y = 150 + fractionY * 300;
+
+                const isHovered = hoveredCommit === commit;
+                
+                return (
+                  <g 
+                    key={`node-${commit.sha}`} 
+                    className="cursor-pointer group" 
+                    onClick={() => setSelectedCommit(commit)}
+                    onMouseEnter={() => setHoveredCommit(commit)}
+                    onMouseLeave={() => setHoveredCommit(null)}
+                  >
+                    <circle 
+                      cx={x} cy={y} r="18" 
+                      className={`fill-[#0f172a] stroke-[3] transition-all duration-300 ${isHovered ? 'stroke-indigo-400' : 'stroke-slate-600'}`} 
+                    />
+                    <circle 
+                      cx={x} cy={y} r="8" 
+                      className={`transition-all duration-300 ${isHovered ? 'fill-white' : 'fill-slate-400'}`} 
+                    />
+                    
+                    {isHovered && (
+                      <foreignObject x={x - 150} y={y + 30} width="300" height="200" className="pointer-events-none overflow-visible z-50">
+                        <div xmlns="http://www.w3.org/1999/xhtml" className="bg-[#0f172a]/95 border border-slate-700/80 p-4 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
+                          <div className="mb-2 inline-block px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/30">
+                            {commit.versionGroup}
+                          </div>
+                          <p className="text-white text-base font-semibold leading-relaxed mb-2">
+                            {commit.summarizedMessage}
+                          </p>
+                          <p className="text-slate-400 text-xs leading-relaxed overflow-hidden text-ellipsis line-clamp-2">
+                            {commit.commit.message}
+                          </p>
+                          <div className="mt-3 pt-3 border-t border-slate-700/50 text-xs text-slate-500 flex justify-between">
+                            <span>{new Date(commit.commit.author.date).toLocaleDateString()}</span>
+                            <span className="font-mono">{commit.sha.substring(0, 7)}</span>
+                          </div>
                         </div>
-                        <p className="text-white text-base font-semibold leading-relaxed mb-2">
-                          {commit.summarizedMessage}
-                        </p>
-                        <p className="text-slate-400 text-xs leading-relaxed overflow-hidden text-ellipsis line-clamp-2">
-                          Original: {commit.commit.message}
-                        </p>
-                        <div className="mt-3 pt-3 border-t border-slate-700/50 text-xs text-slate-500 flex justify-between">
-                          <span>{commit.commit.author.name}</span>
-                          <span className="font-mono">{commit.sha.substring(0, 7)}</span>
-                        </div>
-                      </div>
-                    </foreignObject>
-                  )}
-                </g>
-              );
-            })}
-          </svg>
+                      </foreignObject>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+          )}
         </div>
       </div>
 
       {/* Selected Commit Modal */}
       {selectedCommit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedCommit(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => { setSelectedCommit(null); setAiResponse(''); }}>
           <div 
-            className="bg-slate-900 border border-indigo-500/30 p-8 rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl"
+            className="bg-slate-900 border border-indigo-500/30 p-8 rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative"
             onClick={e => e.stopPropagation()}
           >
-            <h3 className="text-2xl font-bold mb-4 text-indigo-300 border-b border-white/10 pb-4">
-              Commit Details
+            <h3 className="text-2xl font-bold mb-4 text-indigo-300 border-b border-white/10 pb-4 flex items-center justify-between">
+              <span>Commit Details</span>
+              <span className="text-sm font-mono text-slate-500 bg-black/50 px-3 py-1 rounded-lg">
+                {selectedCommit.sha.substring(0,8)}
+              </span>
             </h3>
-            <div className="space-y-4">
-              <div>
-                <p className="text-slate-400 text-sm font-medium mb-1">Summarized Feature</p>
-                <p className="text-white text-lg font-bold mb-4">
-                  {selectedCommit.summarizedMessage}
-                </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              <div className="space-y-4">
+                <div>
+                  <p className="text-slate-400 text-sm font-medium mb-1">Summarized Feature</p>
+                  <p className="text-white text-lg font-bold">
+                    {selectedCommit.summarizedMessage}
+                  </p>
+                </div>
                 
-                <p className="text-slate-400 text-sm font-medium mb-1">Standard Message</p>
-                <p className="text-slate-200 whitespace-pre-wrap bg-black/30 p-4 rounded-xl font-mono text-sm leading-relaxed max-h-48 overflow-y-auto border border-white/5">
-                  {selectedCommit.commit.message}
+                <div>
+                  <p className="text-slate-400 text-sm font-medium mb-1">Standard Message</p>
+                  <p className="text-slate-200 whitespace-pre-wrap bg-black/30 p-4 rounded-xl font-mono text-sm leading-relaxed max-h-40 overflow-y-auto border border-white/5">
+                    {selectedCommit.commit.message}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                    <p className="text-slate-400 text-sm font-medium mb-1">Version Stack</p>
+                    <p className="text-indigo-300 font-bold">{selectedCommit.versionGroup}</p>
+                  </div>
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                    <p className="text-slate-400 text-sm font-medium mb-1">Date</p>
+                    <p className="text-slate-200">{new Date(selectedCommit.commit.author.date).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Summarization Panel */}
+              <div className="bg-indigo-950/20 p-5 rounded-2xl border border-indigo-500/20 flex flex-col h-full bg-gradient-to-b from-indigo-500/5 to-transparent">
+                <p className="text-indigo-300 text-sm font-bold mb-3 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-indigo-400" /> Nebula AI Analysis
                 </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                  <p className="text-slate-400 text-sm font-medium mb-1">Version Stack</p>
-                  <p className="text-indigo-300 font-bold">{selectedCommit.versionGroup}</p>
+                <p className="text-xs text-slate-400 mb-4">Command the AI to review the code change context.</p>
+                
+                <div className="flex flex-col gap-3 flex-1">
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={aiPrompt} 
+                      onChange={e => setAiPrompt(e.target.value)} 
+                      className="w-full bg-black/40 border border-indigo-500/30 rounded-lg pl-3 pr-24 py-3 text-sm text-white focus:outline-none focus:border-indigo-400 shadow-inner" 
+                      placeholder="Prompt the AI..." 
+                    />
+                    <button 
+                      onClick={handleAiSummarize} 
+                      disabled={isAiLoading || !aiPrompt.trim()} 
+                      className="absolute right-1 top-1 bottom-1 bg-indigo-600 hover:bg-indigo-500 px-4 rounded-md text-sm font-bold transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isAiLoading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : "Analyze"}
+                    </button>
+                  </div>
+                  
+                  {/* AI Output Window */}
+                  <div className={`flex-1 bg-black/60 rounded-xl border border-indigo-500/20 p-4 transition-all overflow-y-auto max-h-64 ${aiResponse ? 'opacity-100' : 'opacity-0'}`}>
+                    {aiResponse && (
+                      <p className="text-indigo-100 text-sm font-mono leading-relaxed opacity-90 animate-pulse-once">
+                        {aiResponse}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                  <p className="text-slate-400 text-sm font-medium mb-1">Author</p>
-                  <p className="text-slate-200">{selectedCommit.commit.author.name}</p>
-                </div>
-                <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                  <p className="text-slate-400 text-sm font-medium mb-1">Date</p>
-                  <p className="text-slate-200">{new Date(selectedCommit.commit.author.date).toLocaleString()}</p>
-                </div>
-              </div>
-              <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                <p className="text-slate-400 text-sm font-medium mb-1">SHA hash</p>
-                <p className="text-indigo-400 font-mono break-all">{selectedCommit.sha}</p>
               </div>
             </div>
+
             <button 
-              onClick={() => setSelectedCommit(null)}
-              className="mt-8 w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 font-bold"
+              onClick={() => { setSelectedCommit(null); setAiResponse(''); }}
+              className="mt-8 w-full py-4 rounded-xl bg-slate-800/80 hover:bg-slate-700 transition-colors border border-white/5 font-bold"
             >
-              Close
+              Close Communication Channel
             </button>
           </div>
         </div>
