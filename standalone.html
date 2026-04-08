@@ -57,16 +57,51 @@
           const parts = repoUrl.trim().split('/');
           if (parts.length !== 2) throw new Error('Please enter a valid format: owner/repo');
           const [owner, repo] = parts;
-          const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=15`);
-          if (!response.ok) {
-             if (response.status === 404) throw new Error('Repository not found.');
-             else if (response.status === 403) {
+          
+          const [commitsRes, tagsRes] = await Promise.all([
+            fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=30`),
+            fetch(`https://api.github.com/repos/${owner}/${repo}/tags`)
+          ]);
+          
+          if (!commitsRes.ok) {
+             if (commitsRes.status === 404) throw new Error('Repository not found.');
+             else if (commitsRes.status === 403) {
                throw new Error('API rate limit exceeded. Please try again later with authentication if required.');
              }
-             else throw new Error(`Failed to fetch: ${response.statusText}`);
+             else throw new Error(`Failed to fetch: ${commitsRes.statusText}`);
           }
-          const data = await response.json();
-          setCommitData(data);
+          const commitsData = await commitsRes.json();
+          let tagsData = [];
+          if (tagsRes.ok) tagsData = await tagsRes.json();
+
+          const tagMap = {};
+          tagsData.forEach(tag => {
+            tagMap[tag.commit.sha] = tag.name;
+          });
+
+          const summarize = (msg) => {
+            let firstLine = msg.split('\n')[0];
+            if (firstLine.startsWith('Merge pull request')) {
+               const mergeMatch = msg.match(/Merge pull request #\d+ from [^\n]*\n\n(.*)/);
+               firstLine = mergeMatch && mergeMatch[1] ? mergeMatch[1].split('\n')[0] : 'Merged Feature';
+            }
+            firstLine = firstLine.replace(/^(feat|fix|chore|docs|refactor|test|style)(\([^)]+\))?:\s*/i, '');
+            if (firstLine.length > 0) firstLine = firstLine.charAt(0).toUpperCase() + firstLine.slice(1);
+            if (firstLine.length > 60) firstLine = firstLine.substring(0, 57) + '...';
+            return firstLine;
+          };
+
+          let currentVersion = "Latest (Unassigned)";
+          const processedCommits = commitsData.map(c => {
+            if (tagMap[c.sha]) currentVersion = tagMap[c.sha];
+            else {
+               const versionMatch = c.commit.message.match(/(v\d+\.\d+\.\d+)/);
+               if (versionMatch) currentVersion = versionMatch[1];
+            }
+            return { ...c, versionGroup: currentVersion, summarizedMessage: summarize(c.commit.message) };
+          });
+
+          setCommitData(processedCommits);
         } catch (err) {
           setError(err.message);
         } finally {
@@ -132,6 +167,17 @@
         );
       }
 
+      const versionBoundaries = [];
+      let lastVer = null;
+      commitData.forEach((commit, i) => {
+        if (commit.versionGroup !== lastVer) {
+          const fractionX = i / Math.max(1, commitData.length - 1);
+          const x = 100 + fractionX * 800;
+          versionBoundaries.push({ version: commit.versionGroup, x });
+          lastVer = commit.versionGroup;
+        }
+      });
+
       return (
         <div className="min-h-screen text-white p-8 relative overflow-hidden">
           <div className="relative z-10 max-w-7xl mx-auto">
@@ -153,6 +199,13 @@
             <div className="w-full h-[600px] bg-slate-950/80 rounded-3xl border border-white/5 relative shadow-2xl mt-8">
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 pointer-events-none rounded-3xl"></div>
               <svg viewBox="0 0 1000 600" className="w-full h-full relative z-10 overflow-visible">
+                {/* Draw Version Boundaries */}
+                {versionBoundaries.map((b, idx) => (
+                  <g key={`boundary-${idx}`}>
+                    <line x1={b.x} y1="0" x2={b.x} y2="600" stroke="#4f46e5" strokeWidth="1" strokeDasharray="5,5" className="opacity-30" />
+                    <text x={b.x + 10} y="40" fill="#a5b4fc" className="text-sm font-bold opacity-70 font-mono tracking-widest">{b.version}</text>
+                  </g>
+                ))}
                 {/* Draw Lines */}
                 {commitData.map((commit, i) => {
                   if (i === 0) return null;
@@ -207,10 +260,16 @@
                       {isHovered && (
                         <foreignObject x={x - 150} y={y + 30} width="300" height="200" className="pointer-events-none overflow-visible z-50">
                           <div xmlns="http://www.w3.org/1999/xhtml" className="bg-[#0f172a]/95 border border-slate-700/80 p-4 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] backdrop-blur-md">
-                            <p className="text-white text-sm font-medium leading-relaxed overflow-hidden text-ellipsis line-clamp-3">
-                              {commit.commit.message}
+                            <div className="mb-2 inline-block px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/30">
+                              {commit.versionGroup}
+                            </div>
+                            <p className="text-white text-base font-semibold leading-relaxed mb-2">
+                              {commit.summarizedMessage}
                             </p>
-                            <div className="mt-2 text-xs text-slate-400 flex justify-between">
+                            <p className="text-slate-400 text-xs leading-relaxed overflow-hidden text-ellipsis line-clamp-2">
+                              Original: {commit.commit.message}
+                            </p>
+                            <div className="mt-3 pt-3 border-t border-slate-700/50 text-xs text-slate-500 flex justify-between">
                               <span>{commit.commit.author.name}</span>
                               <span className="font-mono">{commit.sha.substring(0, 7)}</span>
                             </div>
@@ -235,12 +294,21 @@
                 </h3>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-slate-400 text-sm font-medium mb-1">Message</p>
-                    <p className="text-slate-200 whitespace-pre-wrap bg-black/30 p-4 rounded-xl font-mono text-sm">
+                    <p className="text-slate-400 text-sm font-medium mb-1">Summarized Feature</p>
+                    <p className="text-white text-lg font-bold mb-4">
+                      {selectedCommit.summarizedMessage}
+                    </p>
+                    
+                    <p className="text-slate-400 text-sm font-medium mb-1">Standard Message</p>
+                    <p className="text-slate-200 whitespace-pre-wrap bg-black/30 p-4 rounded-xl font-mono text-sm leading-relaxed max-h-48 overflow-y-auto border border-white/5">
                       {selectedCommit.commit.message}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                      <p className="text-slate-400 text-sm font-medium mb-1">Version Stack</p>
+                      <p className="text-indigo-300 font-bold">{selectedCommit.versionGroup}</p>
+                    </div>
                     <div className="bg-white/5 p-4 rounded-xl border border-white/10">
                       <p className="text-slate-400 text-sm font-medium mb-1">Author</p>
                       <p className="text-slate-200">{selectedCommit.commit.author.name}</p>
