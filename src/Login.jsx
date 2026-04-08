@@ -48,7 +48,7 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:3000/api/login', {
+        const response = await fetch('http://localhost:3000/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: loginUser, password: loginPass })
@@ -81,7 +81,7 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:3000/api/signup', {
+        const response = await fetch('http://localhost:3000/api/signup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: signupEmail, username: signupUser, password: signupPass })

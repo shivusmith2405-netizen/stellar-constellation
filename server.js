@@ -75,7 +75,6 @@ app.post('/api/login', (req, res) => {
 });
 
 const PORT = 3000;
-// Using 127.0.0.1 directly forces safety across strict Windows node IPv6 loopback collisions
-app.listen(PORT, '127.0.0.1', () => {
-    console.log(`Backend JSON Auth Database running safely on http://127.0.0.1:${PORT}`);
+app.listen(PORT, () => {
+    console.log(`Backend JSON Auth Database running safely on http://localhost:${PORT}`);
 });
