@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Search, Map, Loader2, Sparkles, Filter, Rocket, GitCommit, Calendar } from 'lucide-react';
+import Login from './Login';
 
 const Starfield = () => {
   const [stars, setStars] = useState([]);
@@ -37,6 +38,7 @@ const Starfield = () => {
 };
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [repoUrl, setRepoUrl] = useState('');
   const [apiToken, setApiToken] = useState('');
   const [commitData, setCommitData] = useState([]);
@@ -196,6 +198,10 @@ function App() {
     });
     return boundaries;
   }, [timelineCommits]);
+
+  if (!isAuthenticated) {
+     return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   if (commitData.length === 0) {
     return (

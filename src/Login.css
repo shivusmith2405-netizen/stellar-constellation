@@ -1,0 +1,344 @@
+/* Scoped CSS Wrapper logic targeting .login-wrapper natively without overriding the global html/body */
+
+.login-wrapper {
+  margin: 0;
+  background: linear-gradient(to right, #f59e0b, #fcd34d, #fef9c3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: white;
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+/* Background Sketches */
+.login-wrapper .sketch-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Dark Room Overlay */
+.login-wrapper .room-darkness {
+  position: absolute;
+  inset: 0;
+  background-color: #121822;
+  z-index: 2;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+/* Scene Container */
+.login-wrapper .scene {
+  display: flex;
+  flex-direction: row; 
+  align-items: center;
+  justify-content: center;
+  gap: 60px; 
+  position: relative;
+  z-index: 10;
+}
+
+/* Lamp Construction */
+.login-wrapper .lamp-container {
+  position: relative;
+  width: 160px;
+  height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+}
+
+.login-wrapper .lamp-shade {
+  width: 140px;
+  height: 110px;
+  background-color: #313a46; 
+  border-radius: 20px 20px 0 0;
+  position: relative;
+  z-index: 2;
+  transition: background-color 0.4s ease;
+  display: flex;
+  justify-content: center;
+}
+
+.login-wrapper .lamp-pole {
+  width: 10px;
+  height: 130px;
+  background-color: #6b7280;
+}
+
+.login-wrapper .lamp-base {
+  width: 80px;
+  height: 12px;
+  background-color: #6b7280;
+  border-radius: 10px 10px 0 0;
+}
+
+/* Pull String */
+.login-wrapper .pull-string {
+  position: absolute;
+  top: 110px;
+  left: 50px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 3;
+  transition: transform 0.1s ease;
+}
+
+.login-wrapper .string-line {
+  width: 2px;
+  height: 50px;
+  background-color: #d1d5db;
+}
+
+.login-wrapper .string-knob {
+  width: 10px;
+  height: 10px;
+  background-color: #f3f4f6;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.login-wrapper .pull-string:active {
+  transform: translateY(15px);
+}
+
+/* Light Beam covering the form */
+.login-wrapper .light-beam {
+  position: absolute;
+  top: 110px;
+  left: -30px;
+  width: 450px; 
+  height: 380px;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
+  clip-path: polygon(15% 0, 35% 0, 100% 100%, 0% 100%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Face Animation */
+.login-wrapper .face {
+  position: absolute;
+  top: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-wrapper .eyes {
+  display: flex;
+  gap: 30px;
+}
+
+.login-wrapper .eye {
+  width: 16px;
+  height: 10px;
+  border-bottom: 3px solid #111;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.login-wrapper .mouth {
+  width: 12px;
+  height: 3px;
+  background-color: #111;
+  border-radius: 5px;
+  margin-top: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-wrapper .tongue {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 10px;
+  background-color: #f472b6; 
+  border-radius: 10px 10px 0 0;
+  transition: bottom 0.3s ease;
+}
+
+/* Form Container */
+.login-wrapper .form-wrapper {
+  width: 320px;
+  background-color: #1a222f;
+  border-radius: 20px;
+  overflow: hidden; 
+  opacity: 0;
+  pointer-events: none;
+  border: 2px solid transparent;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); 
+  transition: opacity 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+  z-index: 20;
+}
+
+.login-wrapper .form-slider {
+  display: flex;
+  width: 640px; 
+  transition: transform 0.4s ease-in-out;
+}
+
+.login-wrapper .form-wrapper.show-signup .form-slider {
+  transform: translateX(-320px);
+}
+
+.login-wrapper .form-panel {
+  width: 320px;
+  padding: 40px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.login-wrapper .form-panel h2 {
+  margin-top: 0;
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 25px;
+}
+
+/* Inputs & Validation */
+.login-wrapper .input-group {
+  margin-bottom: 15px;
+  position: relative;
+}
+
+.login-wrapper .input-group label {
+  display: block;
+  font-size: 13px;
+  color: #9ca3af;
+  margin-bottom: 6px;
+  transition: color 0.3s;
+}
+
+.login-wrapper .input-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #313a46;
+  border-radius: 8px;
+  background-color: #121822;
+  color: white;
+  box-sizing: border-box;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.login-wrapper .input-group input:focus {
+  border: 1px solid #d946ef;
+}
+
+.login-wrapper .input-group.has-error input {
+  border: 1px solid #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.login-wrapper .input-group.has-error label {
+  color: #ef4444;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+}
+
+.login-wrapper .shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Buttons & Links */
+.login-wrapper .submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(to right, #a855f7, #d946ef);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 5px;
+  margin-bottom: 15px;
+  transition: opacity 0.2s;
+}
+
+.login-wrapper .submit-btn:hover {
+  opacity: 0.9;
+}
+
+.login-wrapper .toggle-link {
+  display: block;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.login-wrapper .toggle-link a {
+  color: #d946ef;
+  text-decoration: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.login-wrapper .toggle-link a:hover {
+  text-decoration: underline;
+}
+
+/* Toast Pop-up */
+.login-wrapper .toast {
+  position: fixed;
+  top: 20px;
+  right: -350px; 
+  background-color: #ef4444; 
+  color: white;
+  padding: 16px 24px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  font-weight: bold;
+  font-size: 14px;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: right 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.login-wrapper .toast.show {
+  right: 20px; 
+}
+
+/* ========================================= */
+/* --- "ON" STATE (Triggered on body) --- */
+/* ========================================= */
+
+.login-wrapper.lamp-on .room-darkness { opacity: 0; }
+.login-wrapper.lamp-on .lamp-shade { background-color: #e879f9; }
+.login-wrapper.lamp-on .light-beam { opacity: 1; }
+.login-wrapper.lamp-on .eye { height: 12px; border-bottom: none; border-top: 3px solid #111; }
+.login-wrapper.lamp-on .mouth { width: 20px; height: 14px; background-color: #111; border-radius: 0 0 20px 20px; margin-top: 8px; }
+.login-wrapper.lamp-on .tongue { bottom: 0px; }
+
+.login-wrapper.lamp-on .form-wrapper { 
+  opacity: 1; 
+  pointer-events: all; 
+  border-color: rgba(217, 70, 239, 0.6); 
+  box-shadow: 0 0 30px rgba(217, 70, 239, 0.3); 
+}
