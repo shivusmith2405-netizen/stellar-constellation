@@ -39,6 +39,7 @@ const Starfield = () => {
 
 function App() {
   const [repoUrl, setRepoUrl] = useState('');
+  const [apiToken, setApiToken] = useState('');
   const [commitData, setCommitData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -96,9 +97,14 @@ function App() {
         repo = parts[1];
       }
       
+      const headers = {};
+      if (apiToken.trim()) {
+        headers['Authorization'] = `token ${apiToken.trim()}`;
+      }
+
       const [commitsRes, tagsRes] = await Promise.all([
-        fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=30`),
-        fetch(`https://api.github.com/repos/${owner}/${repo}/tags`)
+        fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=30`, { headers }),
+        fetch(`https://api.github.com/repos/${owner}/${repo}/tags`, { headers })
       ]);
       
       if (!commitsRes.ok) {
@@ -229,6 +235,17 @@ function App() {
                 onKeyDown={handleKeyDown}
                 placeholder="https://github.com/owner/repo" 
                 className="w-full py-5 pl-14 pr-6 bg-slate-950/50 border border-indigo-500/30 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-400 transition-all text-lg shadow-inner font-mono"
+              />
+            </div>
+
+            <div className="w-full relative flex items-center mb-6 max-w-lg mx-auto">
+              <input 
+                type="password" 
+                value={apiToken}
+                onChange={(e) => setApiToken(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Optional: GitHub PAT (Bypass Rate Limits)" 
+                className="w-full py-3 px-5 bg-slate-950/30 border border-indigo-500/20 rounded-xl text-slate-300 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-400 transition-all text-sm font-mono shadow-inner text-center"
               />
             </div>
 
