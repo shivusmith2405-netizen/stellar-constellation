@@ -439,7 +439,7 @@ function App() {
       {selectedCommit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => { setSelectedCommit(null); setAiResponse(''); }}>
           <div 
-            className="bg-[#0f172a] border border-indigo-500/40 p-8 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-[0_0_150px_rgba(79,70,229,0.15)] relative"
+            className="bg-[#0f172a] border border-indigo-500/40 p-8 rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-[0_0_150px_rgba(79,70,229,0.15)] relative"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex justify-between items-center border-b border-slate-800 pb-5 mb-6">
@@ -452,9 +452,9 @@ function App() {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               
-              <div className="col-span-3 space-y-6">
+              <div className="space-y-6">
                 <div>
                   <p className="text-slate-400 text-sm font-semibold tracking-wide uppercase mb-2">Architectural Intent</p>
                   <p className="text-blue-50 text-xl font-bold leading-relaxed">
@@ -499,7 +499,7 @@ function App() {
               </div>
 
               {/* AI Terminal */}
-              <div className="col-span-2 bg-[#020617]/80 p-6 rounded-2xl border border-indigo-500/30 flex flex-col h-full bg-gradient-to-b from-indigo-900/20 to-transparent shadow-xl">
+              <div className="bg-[#020617]/80 p-6 rounded-2xl border border-indigo-500/30 flex flex-col h-full bg-gradient-to-b from-indigo-900/20 to-transparent shadow-xl">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-8 h-8 rounded-full bg-indigo-600/20 flex items-center justify-center border border-indigo-500/50">
                     <Sparkles className="w-4 h-4 text-indigo-400" /> 
