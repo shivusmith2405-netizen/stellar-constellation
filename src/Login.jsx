@@ -297,6 +297,11 @@ export default function Login({ onLoginSuccess }) {
               <div className="toggle-link">
                 Already have an account? <span style={{ color: '#d946ef', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setIsSignup(false)}>Sign In</span>
               </div>
+              <div className="mt-8 pt-4 border-t border-slate-900/10 text-center animate-pulse">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full shadow-sm">
+                   ● Distributed Cloud Sync: Active
+                </span>
+              </div>
             </div>
 
           </div>
