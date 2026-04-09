@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "id": 1775680757916,
+      "email": "shivusmith5@gmail.com",
+      "username": "shivusmith",
+      "password": "cGFzc3dvcmQxMjM="
+    },
+    {
+      "id": 1775680932509,
+      "email": "shivusmith24@gmail.com",
+      "username": "shivuprakash",
+      "password": "cGFzc3dvcmRAMTIz"
+    },
+    {
+      "id": 1775681146099,
+      "email": "sumanthub29@gmail.com",
+      "username": "skiddy",
+      "password": "c2tpZGR5QDEyMw=="
+    }
+  ]
+}
