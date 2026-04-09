@@ -48,7 +48,19 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        
+        // --- Standalone Mode Fallback ---
+        if (!apiUrl && !window.location.hostname.includes('localhost')) {
+            const db = JSON.parse(localStorage.getItem('nebula_db') || '{"users":[]}');
+            const user = db.users.find(u => u.username === loginUser);
+            if (user && atob(user.password) === loginPass) {
+                onLoginSuccess(user.username);
+                return;
+            }
+            throw new Error('Invalid credentials in Standalone Mode.');
+        }
+
         const response = await fetch(`${apiUrl}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -64,7 +76,14 @@ export default function Login({ onLoginSuccess }) {
             displayToast(data.error || 'Authentication failed.');
         }
     } catch (err) {
-        displayToast('Network module unable to connect to auth server.');
+        // Final fallback to localStorage if network fails
+        const db = JSON.parse(localStorage.getItem('nebula_db') || '{"users":[]}');
+        const user = db.users.find(u => u.username === loginUser);
+        if (user && atob(user.password) === loginPass) {
+             onLoginSuccess(user.username);
+        } else {
+             displayToast('Network module unable to connect to auth server. Using Standalone mode.');
+        }
     }
   };
 
@@ -82,7 +101,24 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+
+        // --- Standalone Mode Fallback ---
+        if (!apiUrl && !window.location.hostname.includes('localhost')) {
+            const db = JSON.parse(localStorage.getItem('nebula_db') || '{"users":[]}');
+            if (db.users.find(u => u.username === signupUser || u.email === signupEmail)) {
+                displayToast('Username or email already exists in Standalone Mode.');
+                return;
+            }
+            const newUser = { id: Date.now(), email: signupEmail, username: signupUser, password: btoa(signupPass) };
+            db.users.push(newUser);
+            localStorage.setItem('nebula_db', JSON.stringify(db));
+            displayToast('Account created in Standalone Mode! Sign in to proceed.', 'success');
+            setIsSignup(false);
+            setLoginUser(signupUser);
+            return;
+        }
+
         const response = await fetch(`${apiUrl}/api/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -92,15 +128,22 @@ export default function Login({ onLoginSuccess }) {
         
         if (response.ok) {
             displayToast('Account created! Sign in to proceed.', 'success');
-            setIsSignup(false); // Switch to login screen natively
-            setLoginUser(signupUser); // autofill
+            setIsSignup(false); 
+            setLoginUser(signupUser);
         } else {
             triggerShake('signupUser');
             triggerShake('signupEmail');
             displayToast(data.error);
         }
     } catch (err) {
-        displayToast('Network error while constructing account.');
+        // Fallback to local
+        const db = JSON.parse(localStorage.getItem('nebula_db') || '{"users":[]}');
+        const newUser = { id: Date.now(), email: signupEmail, username: signupUser, password: btoa(signupPass) };
+        db.users.push(newUser);
+        localStorage.setItem('nebula_db', JSON.stringify(db));
+        displayToast('Auth server unreachable. Account created locally!', 'success');
+        setIsSignup(false);
+        setLoginUser(signupUser);
     }
   };
 
