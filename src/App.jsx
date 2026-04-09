@@ -51,6 +51,7 @@ function App() {
   const [displayedImpact, setDisplayedImpact] = useState('');
   const [deepSpaceLevel, setDeepSpaceLevel] = useState(0);
   const [stellarPulse, setStellarPulse] = useState(false);
+  const [showDeepSpace, setShowDeepSpace] = useState(false);
 
   // Supernova states
   const [supernovaStage, setSupernovaStage] = useState(0);
@@ -420,8 +421,8 @@ function App() {
             <p className="text-slate-800 mt-2 font-medium">Displaying chronological branch history across {commitData.length} records.</p>
           </div>
           
-          <div className="flex w-full lg:w-auto items-center gap-4">
-            <div className="relative flex-1 lg:w-80 flex items-center group">
+          <div className="flex w-full lg:w-auto items-center flex-wrap gap-3 justify-end">
+            <div className="relative flex-1 min-w-[200px] lg:w-80 flex items-center group">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                 <Filter className="w-4 h-4 text-amber-700" />
               </div>
@@ -450,21 +451,21 @@ function App() {
 
             <button 
               onClick={() => setStellarPulse(!stellarPulse)}
-              className={`px-5 py-3 rounded-xl border font-bold transition-all flex items-center gap-2 whitespace-nowrap ${stellarPulse ? 'bg-rose-500 text-white border-rose-600 shadow-[0_0_20px_rgba(225,29,72,0.6)]' : 'bg-white/80 text-rose-700 hover:bg-rose-50 border-rose-300 shadow-sm'}`}
+              className={`px-4 py-2.5 rounded-xl border font-bold transition-all flex items-center gap-2 whitespace-nowrap text-xs ${stellarPulse ? 'bg-rose-500 text-white border-rose-600 shadow-[0_0_20px_rgba(225,29,72,0.6)]' : 'bg-white/80 text-rose-700 hover:bg-rose-50 border-rose-300 shadow-sm'}`}
             >
-              <Activity className={`w-5 h-5 ${stellarPulse ? 'animate-pulse' : ''}`} /> Stellar Pulse
+              <Activity className={`w-4 h-4 ${stellarPulse ? 'animate-pulse' : ''}`} /> Stellar Pulse
             </button>
             <button 
               onClick={handleSupernova}
               disabled={timelineCommits.length === 0 || supernovaStage > 0}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-white font-bold whitespace-nowrap shadow-md hover:shadow-[0_0_20px_rgba(245,158,11,0.5)] transition-all flex items-center gap-2 border border-orange-400/50 disabled:opacity-50"
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-white font-bold whitespace-nowrap shadow-md hover:shadow-[0_0_20px_rgba(245,158,11,0.5)] transition-all flex items-center gap-2 border border-orange-400/50 disabled:opacity-50 text-xs"
             >
-              <Zap className={`w-5 h-5 fill-yellow-200 text-yellow-200 ${supernovaStage > 0 ? 'animate-ping' : ''}`} />
+              <Zap className={`w-4 h-4 fill-yellow-200 text-yellow-200 ${supernovaStage > 0 ? 'animate-ping' : ''}`} />
               SUPERNOVA
             </button>
             <button 
               onClick={() => setCommitData([])}
-              className="px-6 py-3 rounded-xl bg-white/80 hover:bg-white text-slate-900 transition-colors border border-amber-600/20 font-bold whitespace-nowrap shadow-sm hover:shadow-lg"
+              className="px-4 py-2.5 rounded-xl bg-white/80 hover:bg-white text-slate-900 transition-colors border border-amber-600/20 font-bold whitespace-nowrap shadow-sm hover:shadow-lg text-xs"
             >
               Abort Mission
             </button>
@@ -576,7 +577,7 @@ function App() {
                     onMouseLeave={() => setHoveredCommit(null)}
                   >
                     {stellarPulse && commit.smellData && (
-                        <circle cx={x} cy={y} r="35" className="fill-transparent stroke-rose-500 stroke-[3] opacity-60 animate-ping pointer-events-none" />
+                        <circle cx={x} cy={y} r="35" className="fill-transparent stroke-rose-500 stroke-[3] opacity-60 animate-blink pointer-events-none" />
                     )}
 
                     {isHovered && <circle cx={x} cy={y} r="28" className={`fill-transparent border-0 opacity-20 ${colors.stroke.replace('stroke-','fill-')} animate-ping`} />}
@@ -636,7 +637,7 @@ function App() {
       {selectedCommit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all duration-500 animate-in fade-in" onClick={() => { setSelectedCommit(null); setDisplayedImpact(''); }}>
           <div 
-            className="bg-slate-900/80 border border-amber-500/40 p-8 rounded-[2rem] max-w-4xl w-full relative shadow-[0_0_100px_rgba(245,158,11,0.2),inset_0_0_30px_rgba(245,158,11,0.1)] backdrop-blur-3xl overflow-hidden transform transition-all animate-in zoom-in-95 duration-300"
+            className="bg-slate-900/90 border border-amber-500/40 p-8 rounded-[2rem] max-w-4xl w-full max-h-[90vh] overflow-y-auto relative shadow-[0_0_100px_rgba(245,158,11,0.2),inset_0_0_30px_rgba(245,158,11,0.1)] backdrop-blur-3xl transform transition-all animate-in zoom-in-95 duration-300"
             onClick={e => e.stopPropagation()}
           >
             {/* Background Glow */}
@@ -750,31 +751,41 @@ function App() {
         </div>
       )}
 
-      {/* Deep Space Slider */}
+      {/* Deep Space Launcher Button */}
       {commitData.length > 0 && (
-        <div className="fixed bottom-8 right-8 bg-slate-900/80 backdrop-blur-xl border border-amber-500/30 p-5 rounded-2xl shadow-[0_0_30px_rgba(0,0,0,0.5)] z-40 w-72 transition-all hover:border-amber-500/50">
-           <div className="flex items-center justify-between mb-4">
-             <div className="flex items-center gap-2 text-amber-400">
-               <Sparkles className="w-5 h-5" />
-               <span className="font-bold text-sm tracking-widest uppercase text-amber-50 shadow-sm">Deep Space</span>
+        <div className="fixed bottom-8 right-8 z-40 flex flex-col items-end gap-4">
+           {showDeepSpace && (
+             <div className="bg-slate-900/95 backdrop-blur-2xl border border-amber-500/30 p-6 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.6)] w-80 animate-in slide-in-from-bottom-5 duration-300">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-amber-400">
+                    <Sparkles className="w-5 h-5" />
+                    <span className="font-bold text-sm tracking-widest uppercase text-amber-50 shadow-sm">Deep Space Level</span>
+                  </div>
+                  <span className="text-amber-500 font-mono text-sm font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">{deepSpaceLevel}%</span>
+                </div>
+                
+                <input 
+                  type="range" 
+                  min="0" max="100" 
+                  value={deepSpaceLevel} 
+                  onChange={(e) => setDeepSpaceLevel(e.target.value)}
+                  className="w-full h-2 rounded-lg appearance-none cursor-pointer border border-amber-500/20 bg-slate-800"
+                  style={{
+                      background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${deepSpaceLevel}%, #1e293b ${deepSpaceLevel}%, #1e293b 100%)`
+                  }}
+                />
+                <p className="text-slate-400 text-xs mt-4 leading-relaxed bg-black/40 p-3 rounded-xl border border-slate-800">
+                  Cut through the noise. Isolating major architectural stars.
+                </p>
              </div>
-             <span className="text-amber-500 font-mono text-sm font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">{deepSpaceLevel}%</span>
-           </div>
-           
-           <input 
-             type="range" 
-             min="0" max="100" 
-             value={deepSpaceLevel} 
-             onChange={(e) => setDeepSpaceLevel(e.target.value)}
-             className="w-full h-2 rounded-lg appearance-none cursor-pointer border border-amber-500/20"
-             style={{
-                 background: `linear-gradient(to right, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.8) ${deepSpaceLevel}%, rgba(30, 41, 59, 0.8) ${deepSpaceLevel}%, rgba(30, 41, 59, 0.8) 100%)`
-             }}
-           />
-           
-           <p className="text-slate-400 text-xs mt-4 leading-relaxed bg-slate-900/50 p-3 rounded-xl border border-slate-700/50">
-             Slide to filter noise. Elevating this threshold isolates the brightest architectural stars.
-           </p>
+           )}
+           <button 
+             onClick={() => setShowDeepSpace(!showDeepSpace)}
+             title="Toggle Deep Space Filtering"
+             className={`p-4 rounded-full border-2 transition-all shadow-2xl flex items-center justify-center ${showDeepSpace ? 'bg-amber-500 border-amber-400 text-slate-900 scale-110' : 'bg-slate-900/90 border-amber-500/40 text-amber-400 hover:border-amber-500'}`}
+           >
+             <Sparkles className={`w-6 h-6 ${showDeepSpace ? 'fill-slate-900' : ''}`} />
+           </button>
         </div>
       )}
     </div>

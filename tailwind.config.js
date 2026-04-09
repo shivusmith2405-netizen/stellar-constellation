@@ -11,6 +11,7 @@ export default {
         'drift': 'drift 40s linear infinite',
         'drift-slow': 'drift 60s linear infinite reverse',
         'pulse-once': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) 1',
+        'blink': 'blink 1s ease-in-out infinite',
       },
       keyframes: {
         'gradient-x': {
@@ -20,6 +21,10 @@ export default {
         'drift': {
           '0%': { transform: 'translateY(0px) translateX(0px)' },
           '100%': { transform: 'translateY(-100px) translateX(-50px)' },
+        },
+        'blink': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.3' },
         }
       },
     },
