@@ -48,10 +48,10 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const apiUrl = import.meta.env.VITE_API_URL || '/api';
         
-        // --- Standalone Mode Fallback ---
-        if (!apiUrl && !window.location.hostname.includes('localhost')) {
+        // --- Standalone Mode Fallback (Only if explicitly on a non-api host AND no apiUrl) ---
+        if (apiUrl === 'standalone') {
             const db = JSON.parse(localStorage.getItem('nebula_db') || '{"users":[]}');
             const user = db.users.find(u => u.username === loginUser);
             if (user && atob(user.password) === loginPass) {
@@ -111,10 +111,10 @@ export default function Login({ onLoginSuccess }) {
     }
 
     try {
-        const apiUrl = import.meta.env.VITE_API_URL || '';
-
+        const apiUrl = import.meta.env.VITE_API_URL || '/api';
+        
         // --- Standalone Mode Fallback ---
-        if (!apiUrl && !window.location.hostname.includes('localhost')) {
+        if (apiUrl === 'standalone') {
             const db = JSON.parse(localStorage.getItem('nebula_db') || '{"users":[]}');
             if (db.users.find(u => u.username === signupUser || u.email === signupEmail)) {
                 displayToast('Username or email already exists in Standalone Mode.');
