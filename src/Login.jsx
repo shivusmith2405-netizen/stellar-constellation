@@ -61,11 +61,20 @@ export default function Login({ onLoginSuccess }) {
             throw new Error('Invalid credentials in Standalone Mode.');
         }
 
-        const response = await fetch(`${apiUrl}/api/login`, {
+        const response = await fetch('/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: loginUser, password: loginPass })
         });
+
+        // Check if the response is actually JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Expected JSON but received:', text.substring(0, 100));
+            throw new Error('Server returned non-JSON response. This is likely a routing error.');
+        }
+
         const data = await response.json();
         
         if (response.ok) {
@@ -76,13 +85,14 @@ export default function Login({ onLoginSuccess }) {
             displayToast(data.error || 'Authentication failed.');
         }
     } catch (err) {
+        console.error('Login Fetch Error:', err);
         // Final fallback to localStorage if network fails
         const db = JSON.parse(localStorage.getItem('nebula_db') || '{"users":[]}');
         const user = db.users.find(u => u.username === loginUser);
         if (user && atob(user.password) === loginPass) {
              onLoginSuccess(user.username);
         } else {
-             displayToast('Network module unable to connect to auth server. Using Standalone mode.');
+             displayToast(`Auth Failure: ${err.message || 'Check connection'}`);
         }
     }
   };
@@ -119,11 +129,17 @@ export default function Login({ onLoginSuccess }) {
             return;
         }
 
-        const response = await fetch(`${apiUrl}/api/signup`, {
+        const response = await fetch('/api/signup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: signupEmail, username: signupUser, password: signupPass })
         });
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Server returned non-JSON response.');
+        }
+
         const data = await response.json();
         
         if (response.ok) {
@@ -133,9 +149,10 @@ export default function Login({ onLoginSuccess }) {
         } else {
             triggerShake('signupUser');
             triggerShake('signupEmail');
-            displayToast(data.error);
+            displayToast(data.error || 'Signup failed.');
         }
     } catch (err) {
+        console.error('Signup Fetch Error:', err);
         // Fallback to local
         const db = JSON.parse(localStorage.getItem('nebula_db') || '{"users":[]}');
         const newUser = { id: Date.now(), email: signupEmail, username: signupUser, password: btoa(signupPass) };
@@ -263,7 +280,7 @@ export default function Login({ onLoginSuccess }) {
         <div className={`form-wrapper ${isSignup ? 'show-signup' : ''}`}>
           <div className="form-slider">
             
-            <div className="form-panel">
+            <form className="form-panel" onSubmit={handleLogin}>
               <h2>Sign In</h2>
               <div className={`input-group ${errors.loginUser ? 'has-error' : ''} ${errors.loginUserPulse ? 'shake' : ''}`}>
                 <label>Username</label>
@@ -273,13 +290,13 @@ export default function Login({ onLoginSuccess }) {
                 <label>Password</label>
                 <input type="password" value={loginPass} onChange={(e) => { setLoginPass(e.target.value); clearError('loginPass'); }} placeholder="Enter your password" />
               </div>
-              <button className="submit-btn" onClick={handleLogin}>Login</button>
+              <button type="submit" className="submit-btn">Login</button>
               <div className="toggle-link">
                 Don't have an account? <span style={{ color: '#d946ef', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setIsSignup(true)}>Sign Up</span>
               </div>
-            </div>
+            </form>
 
-            <div className="form-panel">
+            <form className="form-panel" onSubmit={handleSignup}>
               <h2>Create Account</h2>
               <div className={`input-group ${errors.signupEmail ? 'has-error' : ''} ${errors.signupEmailPulse ? 'shake' : ''}`}>
                 <label>Email</label>
@@ -293,7 +310,7 @@ export default function Login({ onLoginSuccess }) {
                 <label>Password</label>
                 <input type="password" value={signupPass} onChange={(e) => { setSignupPass(e.target.value); clearError('signupPass'); }} placeholder="Create a password" />
               </div>
-              <button className="submit-btn" onClick={handleSignup}>Create Account</button>
+              <button type="submit" className="submit-btn">Create Account</button>
               <div className="toggle-link">
                 Already have an account? <span style={{ color: '#d946ef', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => setIsSignup(false)}>Sign In</span>
               </div>
@@ -302,7 +319,7 @@ export default function Login({ onLoginSuccess }) {
                    ● Distributed Cloud Sync: Active
                 </span>
               </div>
-            </div>
+            </form>
 
           </div>
         </div>

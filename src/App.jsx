@@ -185,20 +185,18 @@ function App() {
         repo = parts[1];
       }
       
-      const headers = {};
-      if (apiToken.trim()) {
-        headers['Authorization'] = `token ${apiToken.trim()}`;
-      }
+      
 
       const [commitsRes, tagsRes] = await Promise.all([
-        fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=30`, { headers }),
-        fetch(`https://api.github.com/repos/${owner}/${repo}/tags`, { headers })
+        fetch(`/api/github?owner=${owner}&repo=${repo}&type=commits`),
+        fetch(`/api/github?owner=${owner}&repo=${repo}&type=tags`)
       ]);
       
       if (!commitsRes.ok) {
+        const errorData = await commitsRes.json().catch(() => ({}));
         if (commitsRes.status === 404) throw new Error('Repository not found. Check the URL or owner/repo spelling.');
-        else if (commitsRes.status === 403) throw new Error('API rate limit exceeded. Please authenticate your API requests or try again later.');
-        else throw new Error(`Failed to fetch commits: ${commitsRes.statusText}`);
+        else if (commitsRes.status === 403) throw new Error('API rate limit exceeded. The system token is exhausted or repository is private.');
+        else throw new Error(errorData.error || `Failed to fetch commits: ${commitsRes.statusText}`);
       }
 
       const commitsData = await commitsRes.json();
